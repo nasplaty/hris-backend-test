@@ -18,18 +18,23 @@ const getPackages = async (req, res) => {
 // GET /api/payment/subscription/current - langganan aktif untuk company login
 const getCurrentSubscription = async (req, res) => {
   try {
-    const companyId = req.user.company_id;  // Get the company id from the logged-in user
-    const today = new Date().toISOString().slice(0, 10);  // Get today's date in YYYY-MM-DD format
+    // Safety check: ensure req.user exists
+    if (!req.user || !req.user.company_id) {
+        return res.status(401).json({ message: 'Unauthorized: Company ID missing' });
+    }
+
+    const companyId = req.user.company_id;
+    const today = new Date().toISOString().slice(0, 10);
 
     const sub = await Subscription.findOne({
       where: {
         company_id: companyId,
-        start_date: { [Op.lte]: today },  // Subscription start date should be less than or equal to today
-        end_date: { [Op.gte]: today },    // Subscription end date should be greater than or equal to today
-        status: 'active',  // Only active subscriptions
+        start_date: { [Op.lte]: today },
+        end_date: { [Op.gte]: today },
+        status: 'active',
       },
-      include: [{ model: Package }],  // Include the package details
-      order: [['created_at', 'DESC']],  // Order by creation date (latest first)
+      include: [{ model: Package }],
+      order: [['created_at', 'DESC']],
     });
 
     if (!sub) {
@@ -46,56 +51,87 @@ const getCurrentSubscription = async (req, res) => {
 // POST /api/payment/subscribe - Admin creates a new subscription
 const createSubscription = async (req, res) => {
   try {
+    // Safety check
+    if (!req.user || !req.user.company_id) {
+        return res.status(401).json({ message: 'Unauthorized: Company ID missing' });
+    }
+
     const companyId = req.user.company_id;
     const {
       package_id,
-      billing_period,  // 'single' or 'monthly'
-      team_size_group,
-      num_employees,
-      tax_rate = 0.11,  // Default tax rate is 11% (can be adjusted)
-      start_date,
-      end_date,
+      billing_period, 
+      number_of_employees, // Matches your Postman JSON
+      tax_rate = 0.11,     // Default 11%
     } = req.body;
 
-    // Check if the package exists
+    // 1. Validate Input
+    if (!package_id || !number_of_employees) {
+        return res.status(400).json({ message: "Package ID and Number of Employees are required" });
+    }
+
+    // 2. Check Package
     const pkg = await Package.findByPk(package_id);
     if (!pkg) return res.status(404).json({ message: 'Package not found' });
 
-    // Check if there's already an active subscription for the company
+    // 3. Handle Existing Subscription (Upgrade/Downgrade Logic)
     const existingSubscription = await Subscription.findOne({
       where: { company_id: companyId, status: 'active' },
     });
 
     if (existingSubscription) {
-      return res.status(400).json({ message: 'You already have an active subscription' });
+      // OPTION A: Block them (Old behavior)
+      // return res.status(400).json({ message: 'You already have an active subscription' });
+
+      // OPTION B: Auto-Expire the old one (Upgrade behavior)
+      await existingSubscription.update({ 
+        status: 'expired',
+        end_date: new Date() // End it today
+      });
     }
 
-    // Calculate the total cost of the subscription
-    const pricePerUser = pkg.price_per_user;
-    const subtotal = pricePerUser * num_employees;
+    // 4. Calculate Dates (The missing piece!)
+    const start_date = new Date();
+    const end_date = new Date();
+
+    if (billing_period === 'Yearly') {
+        end_date.setFullYear(end_date.getFullYear() + 1);
+    } else {
+        // Default to Monthly if not Yearly
+        end_date.setMonth(end_date.getMonth() + 1);
+    }
+
+    // 5. Calculate Costs
+    const pricePerUser = parseFloat(pkg.price_per_user);
+    const subtotal = pricePerUser * number_of_employees;
     const tax = subtotal * tax_rate;
     const total = subtotal + tax;
 
-    // Create a new subscription
+    // 6. Create Subscription
     const subscription = await Subscription.create({
       company_id: companyId,
       package_id,
-      billing_period,
-      team_size_group,
-      num_employees,
+      billing_period: billing_period || 'Monthly',
+      team_size_group: 'Standard', // Optional default
+      
+      // MAP the variable names correctly here:
+      num_employees: number_of_employees, 
+      
       price_per_user: pricePerUser,
       subtotal,
       tax,
       total,
+      
+      // Use the calculated dates
       start_date,
       end_date,
-      status: 'active',  // Set the subscription status as active
+      
+      status: 'active',
     });
 
     return res.status(201).json(subscription);
   } catch (err) {
     console.error('createSubscription error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 

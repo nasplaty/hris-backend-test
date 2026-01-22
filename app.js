@@ -25,19 +25,19 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 // Rute untuk Employee dan fitur terkait
-app.use('/api/employees', authMiddleware(['admin', 'user']), employeeRoutes);
+app.use('/api/employees', authMiddleware(['admin_company', 'user']), employeeRoutes);
 
 // Rute untuk Attendance, hanya admin dan user yang bisa akses
-app.use('/api/attendance', authMiddleware(['admin', 'user']), attendanceRoutes);
+app.use('/api/attendance', authMiddleware(['admin_company', 'user']), attendanceRoutes);
 
 // Rute untuk Payment dan Subscription, admin yang bisa akses
-app.use('/api/payment', authMiddleware('admin'), paymentRoutes);
+app.use('/api/payment', authMiddleware('admin_company'), paymentRoutes);
 
 // Rute untuk Update Password
 app.use('/api/user', authMiddleware('user'), userRoutes);
 
 // Rute untuk Admin (System & Company)
-app.use('/api/admin', authMiddleware('admin_system'), adminRoutes);  // Admin routes
+app.use('/api/admin', authMiddleware(['admin_system', 'admin_company']), adminRoutes);  // Admin routes
 
 // Endpoint root untuk memastikan API berjalan
 app.get('/', (req, res) => {

@@ -1,4 +1,7 @@
-const { Attendance, Employee } = require('../models');
+// src/controllers/attendance.controller.js
+
+// 1. UPDATE IMPORTS: Add Subscription here
+const { Attendance, Employee, Subscription } = require('../models'); // <--- CHANGE 1
 const { Op } = require('sequelize');
 
 // Helper untuk tanggal hari ini
@@ -98,6 +101,33 @@ const createAttendance = async (req, res) => {
       lng,
       proof_url,
     } = req.body;
+
+    // --- CHANGE 2: SECURITY GATEKEEPER START ---
+    
+    // 1. Get the Employee data to find their Company ID
+    const employee = await Employee.findByPk(employeeId);
+    if (!employee) {
+        return res.status(404).json({ message: 'Employee profile not found' });
+    }
+
+    // 2. Check if the Company has a Valid Subscription
+    const today = new Date().toISOString().slice(0, 10);
+    const activeSubscription = await Subscription.findOne({
+        where: {
+            company_id: employee.company_id,
+            status: 'active',
+            end_date: { [Op.gte]: today } // Subscription must not be expired
+        }
+    });
+
+    // 3. Block if no subscription
+    if (!activeSubscription) {
+        return res.status(403).json({ 
+            message: 'Attendance blocked: Your company subscription is expired or inactive.' 
+        });
+    }
+    // --- SECURITY GATEKEEPER END ---
+
 
     // Validasi input: pastikan karyawan tidak mengisi absensi lebih dari satu kali dalam sehari
     const existingAttendance = await Attendance.findOne({
