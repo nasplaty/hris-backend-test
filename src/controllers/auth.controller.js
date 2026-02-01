@@ -119,4 +119,36 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { register, login };
+// --- NEW FUNCTION: Force Reset Password ---
+const forceResetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: 'Email and new password are required' });
+    }
+
+    // 1. Find User by Email
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: 'User with this email not found' });
+    }
+
+    // 2. Hash the New Password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 3. Update the Database
+    await user.update({ password: hashedPassword });
+
+    return res.json({ message: 'Password has been successfully reset' });
+  } catch (err) {
+    console.error('Force reset error:', err);
+    return res.status(500).json({ message: 'Server error during password reset' });
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  forceResetPassword // <--- MAKE SURE TO EXPORT THIS
+};
