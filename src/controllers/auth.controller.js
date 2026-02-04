@@ -123,6 +123,24 @@ const login = async (req, res) => {
   }
 };
 
+const logout = async (req, res) => {
+  try {
+    // Karena menggunakan JWT Stateless, server tidak menyimpan sesi.
+    // Cara logout adalah dengan memberitahu Client untuk menghapus token.
+    
+    // Opsi Tambahan (Jika Anda pakai Cookie HttpOnly):
+    // res.clearCookie('token'); 
+
+    return res.status(200).json({ 
+      message: 'Logout successful. Please remove token from client storage.',
+      action: 'REMOVE_TOKEN' // Sinyal ke frontend
+    });
+  } catch (err) {
+    console.error('logout error:', err);
+    return res.status(500).json({ message: 'Server error during logout' });
+  }
+};
+
 // --- NEW FUNCTION: Force Reset Password ---
 const forceResetPassword = async (req, res) => {
   try {
@@ -154,5 +172,6 @@ const forceResetPassword = async (req, res) => {
 module.exports = {
   register,
   login,
-  forceResetPassword // <--- MAKE SURE TO EXPORT THIS
+  forceResetPassword,
+  logout // <--- Tambahkan ini
 };
