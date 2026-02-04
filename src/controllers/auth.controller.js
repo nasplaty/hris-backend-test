@@ -107,6 +107,10 @@ const login = async (req, res) => {
       token,
       user: {
         id: user.id,
+        // --- ADD THESE TWO LINES ---
+        first_name: user.first_name, 
+        last_name: user.last_name,
+        // ---------------------------
         email: user.email,
         role: user.role,
         company_id: user.company_id,

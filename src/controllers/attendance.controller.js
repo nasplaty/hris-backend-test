@@ -10,21 +10,29 @@ const todayDateOnly = () => {
 // ==========================================
 // ADMIN: Get All Attendance (FIXED)
 // ==========================================
+// src/controllers/attendance.controller.js
+
 const getAttendanceList = async (req, res) => {
   try {
-    // 1. Safety Check: Ensure User Exists
     if (!req.user || !req.user.company_id) {
        return res.status(401).json({ message: "Unauthorized: Missing Company Context" });
     }
 
     const companyId = req.user.company_id;
-    const { page = 1, limit = 10, search = '' } = req.query;
+    // 1. EXTRACT 'status' FROM QUERY
+    const { page = 1, limit = 10, search = '', status } = req.query;
     const offset = (page - 1) * limit;
 
-    console.log(`DEBUG: Admin ${req.user.id} fetching attendance for Company ${companyId}`);
+    // 2. BUILD THE ATTENDANCE FILTER
+    const attendanceWhere = {};
+    if (status) {
+        attendanceWhere.status_approve = status; // Only show what was asked for (e.g. 'waiting')
+    }
 
-    // 2. Fetch Attendance
+    console.log(`DEBUG: Fetching attendance. Status: ${status || 'ALL'}`);
+
     const { count, rows } = await Attendance.findAndCountAll({
+      where: attendanceWhere, // <--- 3. APPLY THE FILTER HERE
       distinct: true, 
       include: [
         {
@@ -37,7 +45,6 @@ const getAttendanceList = async (req, res) => {
                 { last_name: { [Op.like]: `%${search}%` } }
              ]
           },
-          // REMOVED 'employee_id' from here. The table uses 'id'.
           attributes: ['id', 'first_name', 'last_name', 'position']
         }
       ],
@@ -45,8 +52,6 @@ const getAttendanceList = async (req, res) => {
       limit: Number(limit),
       order: [['date', 'DESC'], ['created_at', 'DESC']]
     });
-
-    console.log(`DEBUG: Found ${count} records`);
 
     return res.json({
       data: rows,
@@ -59,10 +64,7 @@ const getAttendanceList = async (req, res) => {
 
   } catch (err) {
     console.error('CRITICAL ERROR in getAttendanceList:', err);
-    return res.status(500).json({ 
-        message: 'Server Error fetching data', 
-        error: err.message 
-    });
+    return res.status(500).json({ message: 'Server Error fetching data', error: err.message });
   }
 };
 
