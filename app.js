@@ -34,7 +34,7 @@ app.use('/api/attendance', authMiddleware(['admin_company', 'user']), attendance
 app.use('/api/payment', authMiddleware('admin_company'), paymentRoutes);
 
 // Rute untuk Update Password
-app.use('/api/user', authMiddleware('user'), userRoutes);
+app.use('/api/user', authMiddleware(['user', 'admin_company']), userRoutes);
 
 // Rute untuk Admin (System & Company)
 app.use('/api/admin', authMiddleware(['admin_system', 'admin_company']), adminRoutes);  // Admin routes
