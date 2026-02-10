@@ -54,7 +54,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     employment_status: {
-      type: DataTypes.ENUM('tetap', 'kontrak', 'magang', 'outsourcing', 'resign'),
+      type: DataTypes.ENUM('tetap_permanen', 'tetap_percobaan', 'pkwt', 'magang', 'resign'),
       allowNull: true,
     },
     nik: {
