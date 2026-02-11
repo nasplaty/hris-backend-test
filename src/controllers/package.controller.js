@@ -1,6 +1,46 @@
 // src/controllers/package.controller.js
 const { Package } = require('../models');
 
+const getPackages = async (req, res) => {
+  try {
+    const packages = await Package.findAll({
+      order: [['price_per_user', 'ASC']],
+    });
+
+    const formattedPackages = packages.map(pkg => {
+      let descriptionText = pkg.description || "";
+      let featuresList = [];
+
+      // Split by "---" to separate main description from features
+      if (descriptionText.includes('---')) {
+          const parts = descriptionText.split('---');
+          descriptionText = parts[0].trim();
+          // Split features by newline, trim whitespace, and remove empty lines
+          featuresList = parts[1]
+            .split('\n','\r')
+            .map(f => f.trim())
+            .filter(f => f !== '');
+      }
+
+      return {
+          id: pkg.id,
+          name: pkg.name,
+          price: pkg.price_per_user,
+          // Send these as separate fields
+          desc: descriptionText,
+          features: featuresList, 
+          level: pkg.level,
+          highlight: pkg.level === 'premium'
+      };
+    });
+
+    return res.json(formattedPackages);
+  } catch (err) {
+    console.error('getPackages error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 const createPackage = async (req, res) => {
   try {
     const {
@@ -44,4 +84,5 @@ const createPackage = async (req, res) => {
   }
 };
 
-module.exports = { createPackage };
+module.exports = { createPackage, getPackages };
+
