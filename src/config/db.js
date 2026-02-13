@@ -8,9 +8,19 @@ const sequelize = new Sequelize(
   process.env.DB_PASS,
   {
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 4000, // Tambahkan ini agar TiDB tahu pintu masuknya
     dialect: 'mysql',
-    logging: false, // Set to console.log to see SQL queries
-    timezone: '+07:00' // Adjust to your timezone (WIB)
+    logging: false, 
+    timezone: '+07:00', 
+    
+    // 👇 TAMBAHKAN BAGIAN INI UNTUK KEAMANAN SSL TIDB 👇
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: true
+      }
+    }
+    // 👆 SAMPAI SINI 👆
   }
 );
 
