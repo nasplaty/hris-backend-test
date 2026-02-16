@@ -16,29 +16,31 @@ const getPackages = async (req, res) => {
 };
 
 // GET /api/payment/subscription/current - langganan aktif untuk company login
+// GET /api/payment/subscriptions/current
 const getCurrentSubscription = async (req, res) => {
   try {
-    // Safety check: ensure req.user exists
+    // Safety check
     if (!req.user || !req.user.company_id) {
         return res.status(401).json({ message: 'Unauthorized: Company ID missing' });
     }
 
     const companyId = req.user.company_id;
-    const today = new Date().toISOString().slice(0, 10);
 
+    // PERBAIKAN:
+    // Kita hapus filter 'status: active' dan filter tanggal.
+    // Kita hanya ambil data TERAKHIR yang dibuat (created_at DESC).
+    // Biarkan Frontend yang menentukan apakah itu Active, Expired, atau Pending berdasarkan datanya.
     const sub = await Subscription.findOne({
       where: {
         company_id: companyId,
-        start_date: { [Op.lte]: today },
-        end_date: { [Op.gte]: today },
-        status: 'active',
       },
-      include: [{ model: Package }],
-      order: [['created_at', 'DESC']],
+      include: [{ model: Package }], // Penting agar nama paket muncul
+      order: [['created_at', 'DESC']], // Ambil yang paling baru
     });
 
+    // Jika user benar-benar belum pernah subscribe sama sekali
     if (!sub) {
-      return res.status(404).json({ message: 'No active subscription found' });
+      return res.status(404).json({ message: 'No subscription history found' });
     }
 
     return res.json(sub);
